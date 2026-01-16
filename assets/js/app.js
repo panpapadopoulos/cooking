@@ -92,6 +92,9 @@ function handleRoute() {
         case 'parse':
             showParseView();
             break;
+        case 'add':
+            showParseView(null, true); // manual entry mode
+            break;
         case 'settings':
             showSettingsView();
             break;
@@ -144,25 +147,6 @@ async function showRecipesView() {
         <div class="view" id="view-recipes">
             <div class="view-header">
                 <h1>My Recipes</h1>
-                <div class="view-actions">
-                    <button class="btn btn-primary" id="new-recipe-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 5v14M5 12h14"/>
-                        </svg><span>New Recipe</span>
-                    </button>
-                    <button class="btn btn-secondary" id="import-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                        </svg><span>Import</span>
-                    </button>
-                    <button class="btn btn-secondary" id="export-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg><span>Export</span>
-                    </button>
-                </div>
             </div>
             ${appState.recipes.length ? `
                 <div class="recipes-grid" id="recipes-grid">
@@ -179,17 +163,7 @@ async function showRecipesView() {
         </div>
     `;
 
-    // Add event listeners
-    document.getElementById('import-btn')?.addEventListener('click', () => {
-        document.getElementById('file-import-input')?.click();
-    });
-    document.getElementById('export-btn')?.addEventListener('click', handleExport);
-
-    // New Recipe button
-    document.getElementById('new-recipe-btn')?.addEventListener('click', () => {
-        showParseView(null, true); // true = manual entry mode
-    });
-
+    // Add event listeners for recipe cards
     document.querySelectorAll('.recipe-card').forEach(card => {
         card.addEventListener('click', () => {
             window.location.hash = `recipe/${card.dataset.id}`;
@@ -457,16 +431,35 @@ function showShareModal(recipe) {
     ]);
 }
 
-// Format recipe for sharing
+// Format recipe for sharing (fully localized)
 function formatRecipeForSharing(recipe, lang, unit, servings) {
     const scale = servings / recipe.servings;
     const useTranslated = lang === 'translated';
 
+    // Determine output language - if using translated, check what that would be
+    const isGreek = (useTranslated && recipe.originalLanguage === 'en') ||
+        (!useTranslated && recipe.originalLanguage === 'el');
+
+    // Localized labels
+    const labels = isGreek ? {
+        servings: 'Μερίδες',
+        ingredients: 'ΥΛΙΚΑ',
+        instructions: 'ΟΔΗΓΙΕΣ',
+        notes: 'ΣΗΜΕΙΩΣΕΙΣ',
+        source: 'Πηγή'
+    } : {
+        servings: 'Servings',
+        ingredients: 'INGREDIENTS',
+        instructions: 'INSTRUCTIONS',
+        notes: 'NOTES',
+        source: 'Source'
+    };
+
     let text = `${useTranslated && recipe.translatedTitle ? recipe.translatedTitle : recipe.title}\n`;
     text += `${'─'.repeat(40)}\n`;
-    text += `Servings: ${servings}\n\n`;
+    text += `${labels.servings}: ${servings}\n\n`;
 
-    text += `INGREDIENTS\n`;
+    text += `${labels.ingredients}\n`;
     recipe.ingredients.forEach(ing => {
         const scaledQty = ing.quantity ? scaleQuantity(ing.quantity, 1, scale) : null;
         const conv = convertIngredient({ ...ing, quantity: scaledQty }, unit);
@@ -475,18 +468,18 @@ function formatRecipeForSharing(recipe, lang, unit, servings) {
         text += `• ${qty ? qty + ' ' : ''}${name}\n`;
     });
 
-    text += `\nINSTRUCTIONS\n`;
+    text += `\n${labels.instructions}\n`;
     const instructions = useTranslated && recipe.translatedInstructions ? recipe.translatedInstructions : recipe.instructions;
     instructions.forEach((step, i) => {
         text += `${i + 1}. ${step}\n`;
     });
 
     if (recipe.notes) {
-        text += `\nNOTES\n${recipe.notes}\n`;
+        text += `\n${labels.notes}\n${recipe.notes}\n`;
     }
 
     if (recipe.source) {
-        text += `\nSource: ${recipe.source}`;
+        text += `\n${labels.source}: ${recipe.source}`;
     }
 
     return text;
@@ -505,41 +498,10 @@ function showParseView(editRecipe = null, manualEntry = false) {
             
             <div class="parse-container">
                 <div class="parse-input-section" ${showForm ? 'style="display:none"' : ''}>
-                    <!-- Input Mode Tabs -->
-                    <div class="parse-tabs">
-                        <button class="parse-tab active" data-mode="text">📝 Paste Text</button>
-                        <button class="parse-tab" data-mode="url">🔗 From URL</button>
-                    </div>
-                    
-                    <!-- Text Input Mode -->
-                    <div class="parse-mode" id="mode-text">
-                        <div class="form-group">
-                            <label for="recipe-text">Paste your recipe here</label>
-                            <textarea id="recipe-text" class="recipe-textarea" placeholder="Paste a recipe in Greek or English..." rows="12"></textarea>
-                        </div>
-                    </div>
-                    
-                    <!-- URL Input Mode -->
-                    <div class="parse-mode" id="mode-url" style="display:none;">
-                        <div class="form-group">
-                            <label for="recipe-url">Enter recipe URL</label>
-                            <input type="url" id="recipe-url" class="recipe-url-input" placeholder="https://example.com/recipe...">
-                        </div>
-                        <p class="url-hint">Paste a link to any recipe page and we'll extract the recipe automatically using AI.</p>
-                    </div>
-                    
-                    <div class="parse-options">
-                        <div class="form-group" id="lang-select-group">
-                            <label for="source-lang">Source Language</label>
-                            <select id="source-lang">
-                                <option value="auto">Auto-detect</option>
-                                <option value="el">Greek</option>
-                                <option value="en">English</option>
-                            </select>
-                        </div>
-                        <div class="parse-mode-indicator" id="parse-mode-indicator">
-                            <span class="mode-badge gemini">Using: AI Parser</span>
-                        </div>
+                    <div class="form-group">
+                        <label for="recipe-input">Paste recipe text or URL</label>
+                        <textarea id="recipe-input" class="recipe-textarea" placeholder="Paste a recipe URL or recipe text in Greek or English..." rows="10"></textarea>
+                        <p class="input-hint">💡 Paste a URL to import from a website, or paste recipe text directly</p>
                     </div>
                     
                     <button class="btn btn-primary btn-block" id="parse-btn">
@@ -638,21 +600,6 @@ function renderStepInput(step = '', index = 0) {
 
 // Setup parse view listeners
 function setupParseListeners() {
-    // Tab switching
-    document.querySelectorAll('.parse-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            document.querySelectorAll('.parse-tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-
-            const mode = tab.dataset.mode;
-            document.getElementById('mode-text').style.display = mode === 'text' ? 'block' : 'none';
-            document.getElementById('mode-url').style.display = mode === 'url' ? 'block' : 'none';
-
-            // Hide language selector for URL mode (auto-detect)
-            document.getElementById('lang-select-group').style.display = mode === 'text' ? 'block' : 'none';
-        });
-    });
-
     document.getElementById('parse-btn')?.addEventListener('click', handleParse);
 
     document.getElementById('add-ingredient-btn')?.addEventListener('click', () => {
@@ -674,10 +621,14 @@ function setupParseListeners() {
     document.getElementById('recipe-form')?.addEventListener('submit', handleSaveRecipe);
 }
 
-// Handle parse (text or URL)
+// Handle parse - auto-detect URL vs text
 async function handleParse() {
-    const activeTab = document.querySelector('.parse-tab.active');
-    const isUrlMode = activeTab?.dataset.mode === 'url';
+    const input = document.getElementById('recipe-input')?.value.trim();
+
+    if (!input) {
+        showToast('Please paste a recipe or URL', 'warning');
+        return;
+    }
 
     const btn = document.getElementById('parse-btn');
     btn.disabled = true;
@@ -686,23 +637,17 @@ async function handleParse() {
     try {
         let parsed;
 
-        if (isUrlMode) {
-            // URL mode - fetch and parse with Worker
-            const url = document.getElementById('recipe-url').value.trim();
-            if (!url) {
-                showToast('Please enter a URL', 'warning');
-                btn.disabled = false;
-                btn.innerHTML = '<span>Parse Recipe</span>';
-                return;
-            }
+        // Auto-detect: if it looks like a URL, fetch and parse HTML
+        const isUrl = /^https?:\/\//i.test(input);
 
+        if (isUrl) {
             showToast('Fetching recipe from URL...', 'info');
 
             // Fetch URL content via Worker proxy
             const fetchResponse = await fetch('/api/fetch-url', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url })
+                body: JSON.stringify({ url: input })
             });
 
             if (!fetchResponse.ok) {
@@ -711,6 +656,10 @@ async function handleParse() {
             }
 
             const { html } = await fetchResponse.json();
+
+            if (!html || html.length < 100) {
+                throw new Error('Could not fetch page content');
+            }
 
             showToast('Parsing recipe with AI...', 'info');
 
@@ -728,24 +677,16 @@ async function handleParse() {
 
             const result = await parseResponse.json();
             parsed = result.recipe;
-            parsed.source = url;
+            parsed.source = input;
 
         } else {
             // Text mode - parse with Worker's Gemini API
-            const text = document.getElementById('recipe-text').value.trim();
-            if (!text) {
-                showToast('Please paste a recipe first', 'warning');
-                btn.disabled = false;
-                btn.innerHTML = '<span>Parse Recipe</span>';
-                return;
-            }
-
             showToast('Parsing recipe with AI...', 'info');
 
             const parseResponse = await fetch('/api/parse-recipe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: text, type: 'text' })
+                body: JSON.stringify({ content: input, type: 'text' })
             });
 
             if (!parseResponse.ok) {
@@ -755,7 +696,7 @@ async function handleParse() {
 
             const result = await parseResponse.json();
             parsed = result.recipe;
-            parsed.originalText = text;
+            parsed.originalText = input;
         }
 
         // Show preview

@@ -880,6 +880,13 @@ ol {
     font-style: italic;
 }
 
+/* Input hint */
+.input-hint {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    margin-top: var(--space-sm);
+}
+
 /* Servings control */
 .servings-control {
     display: flex;
