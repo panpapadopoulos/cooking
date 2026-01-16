@@ -281,7 +281,7 @@ function renderRecipeDetail(recipe, desiredServings = null) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${recipe.ingredients.map(ing => renderIngredientRow(ing, scale)).join('')}
+                                    ${recipe.ingredients.map((ing, i) => renderIngredientRow(ing, scale, i)).join('')}
                                 </tbody>
                             </table>
                         </div>
@@ -316,8 +316,8 @@ function renderRecipeDetail(recipe, desiredServings = null) {
     `;
 }
 
-// Render ingredient row with 3 unit columns
-function renderIngredientRow(ingredient, scale = 1) {
+// Render ingredient row with 3 unit columns and editable qty
+function renderIngredientRow(ingredient, scale = 1, index = 0) {
     const scaledQty = ingredient.quantity ? scaleQuantity(ingredient.quantity, 1, scale) : null;
 
     // Get conversions for all three unit systems
@@ -330,9 +330,14 @@ function renderIngredientRow(ingredient, scale = 1) {
     const usDisplay = usConv.converted ? formatQuantityUnit(usConv.quantity, usConv.unit) : originalQty || '—';
     const cookingDisplay = cookingConv.converted ? formatQuantityUnit(cookingConv.quantity, cookingConv.unit) : originalQty || '—';
 
+    // Make qty clickable for single-ingredient recalculation
+    const qtyDisplay = scaledQty ?
+        `<span class="editable-qty" data-index="${index}" data-original="${ingredient.quantity}" data-scaled="${scaledQty}" title="Click to adjust">${originalQty}</span>` :
+        '—';
+
     return `
         <tr>
-            <td class="qty-col">${originalQty || '—'}</td>
+            <td class="qty-col">${qtyDisplay}</td>
             <td class="ingredient-col">
                 <span class="ingredient-name">${escapeHtml(ingredient.item)}</span>
                 ${ingredient.translatedItem ? `<span class="ingredient-translation">${escapeHtml(ingredient.translatedItem)}</span>` : ''}
@@ -387,6 +392,40 @@ function setupRecipeDetailListeners() {
                 }
             }
         ]);
+    });
+
+    // Editable quantities - click to adjust and recalculate proportionally
+    document.querySelectorAll('.editable-qty').forEach(span => {
+        span.addEventListener('click', () => {
+            const index = parseInt(span.dataset.index);
+            const originalQty = parseFloat(span.dataset.original);
+            const currentScaledQty = parseFloat(span.dataset.scaled);
+            const ingredient = appState.currentRecipe.ingredients[index];
+
+            const newQty = prompt(
+                `Adjust ${ingredient.item}:\n\nCurrent: ${currentScaledQty} ${ingredient.unit || ''}\nEnter new quantity:`,
+                currentScaledQty
+            );
+
+            if (newQty && !isNaN(parseFloat(newQty))) {
+                const newQtyNum = parseFloat(newQty);
+                // Calculate new scale based on the ratio change
+                const currentScale = appState.desiredServings ?
+                    appState.desiredServings / appState.currentRecipe.servings : 1;
+                const newScale = (newQtyNum / originalQty);
+
+                // Calculate new servings from the new scale
+                const newServings = Math.round(appState.currentRecipe.servings * newScale);
+                appState.desiredServings = Math.max(1, newServings);
+
+                // Re-render
+                const main = document.getElementById('main-content');
+                main.innerHTML = renderRecipeDetail(appState.currentRecipe, appState.desiredServings);
+                setupRecipeDetailListeners();
+
+                showToast(`Quantities adjusted (now ${appState.desiredServings} servings)`, 'success');
+            }
+        });
     });
 }
 

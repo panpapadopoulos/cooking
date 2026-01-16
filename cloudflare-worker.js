@@ -73,6 +73,16 @@ export default {
                 return handleParseRecipe(request, env);
             }
 
+            // Recipe storage API (uses Cloudflare KV)
+            if (path === '/api/recipes') {
+                if (request.method === 'GET') {
+                    return handleGetRecipes(env);
+                }
+                if (request.method === 'POST') {
+                    return handleSaveRecipes(request, env);
+                }
+            }
+
             return new Response(JSON.stringify({ error: 'Not found' }), {
                 status: 404,
                 headers: { 'Content-Type': 'application/json' }
@@ -308,7 +318,64 @@ function corsHeaders() {
     return {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
     };
+}
+
+// Recipe storage handlers (Cloudflare KV)
+const RECIPES_KEY = 'user_recipes';
+
+async function handleGetRecipes(env) {
+    try {
+        // Check if KV namespace is configured
+        if (!env.RECIPES_KV) {
+            return new Response(JSON.stringify({ error: 'KV storage not configured' }), {
+                status: 500,
+                headers: corsHeaders()
+            });
+        }
+
+        const data = await env.RECIPES_KV.get(RECIPES_KEY, 'json');
+        return new Response(JSON.stringify({ recipes: data || [] }), {
+            headers: corsHeaders()
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+            status: 500,
+            headers: corsHeaders()
+        });
+    }
+}
+
+async function handleSaveRecipes(request, env) {
+    try {
+        // Check if KV namespace is configured
+        if (!env.RECIPES_KV) {
+            return new Response(JSON.stringify({ error: 'KV storage not configured' }), {
+                status: 500,
+                headers: corsHeaders()
+            });
+        }
+
+        const { recipes } = await request.json();
+
+        if (!Array.isArray(recipes)) {
+            return new Response(JSON.stringify({ error: 'Invalid recipes data' }), {
+                status: 400,
+                headers: corsHeaders()
+            });
+        }
+
+        await env.RECIPES_KV.put(RECIPES_KEY, JSON.stringify(recipes));
+
+        return new Response(JSON.stringify({ success: true, count: recipes.length }), {
+            headers: corsHeaders()
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+            status: 500,
+            headers: corsHeaders()
+        });
+    }
 }

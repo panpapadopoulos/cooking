@@ -35,10 +35,28 @@ async function initDB() {
     });
 }
 
-// Get all recipes
+// Get all recipes (from cloud, with local fallback)
 async function getAllRecipes() {
     if (!db) await initDB();
 
+    try {
+        // Try to fetch from cloud first
+        const response = await fetch('/api/recipes');
+        if (response.ok) {
+            const { recipes } = await response.json();
+            if (Array.isArray(recipes) && recipes.length > 0) {
+                // Update local cache
+                for (const recipe of recipes) {
+                    await saveToLocal(recipe);
+                }
+                return recipes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            }
+        }
+    } catch (error) {
+        console.log('Cloud fetch failed, using local:', error.message);
+    }
+
+    // Fallback to local
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([DB_CONFIG.storeName], 'readonly');
         const store = transaction.objectStore(DB_CONFIG.storeName);
@@ -68,17 +86,9 @@ async function getRecipe(id) {
     });
 }
 
-// Save recipe (create or update)
-async function saveRecipe(recipe) {
+// Save to local IndexedDB only
+async function saveToLocal(recipe) {
     if (!db) await initDB();
-
-    const now = new Date().toISOString();
-
-    if (!recipe.id) {
-        recipe.id = generateId();
-        recipe.createdAt = now;
-    }
-    recipe.updatedAt = now;
 
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([DB_CONFIG.storeName], 'readwrite');
@@ -90,11 +100,60 @@ async function saveRecipe(recipe) {
     });
 }
 
-// Delete recipe
-async function deleteRecipe(id) {
+// Save recipe (create or update) - syncs to cloud
+async function saveRecipe(recipe) {
+    if (!db) await initDB();
+
+    const now = new Date().toISOString();
+
+    if (!recipe.id) {
+        recipe.id = generateId();
+        recipe.createdAt = now;
+    }
+    recipe.updatedAt = now;
+
+    // Save locally first
+    await saveToLocal(recipe);
+
+    // Sync all recipes to cloud
+    await syncToCloud();
+
+    return recipe;
+}
+
+// Sync all local recipes to cloud
+async function syncToCloud() {
+    try {
+        const recipes = await getLocalRecipes();
+        await fetch('/api/recipes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recipes })
+        });
+    } catch (error) {
+        console.log('Cloud sync failed:', error.message);
+    }
+}
+
+// Get all local recipes
+async function getLocalRecipes() {
     if (!db) await initDB();
 
     return new Promise((resolve, reject) => {
+        const transaction = db.transaction([DB_CONFIG.storeName], 'readonly');
+        const store = transaction.objectStore(DB_CONFIG.storeName);
+        const request = store.getAll();
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Delete recipe - syncs to cloud
+async function deleteRecipe(id) {
+    if (!db) await initDB();
+
+    await new Promise((resolve, reject) => {
         const transaction = db.transaction([DB_CONFIG.storeName], 'readwrite');
         const store = transaction.objectStore(DB_CONFIG.storeName);
         const request = store.delete(id);
@@ -102,6 +161,9 @@ async function deleteRecipe(id) {
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
+
+    // Sync to cloud
+    await syncToCloud();
 }
 
 // Clear all recipes
