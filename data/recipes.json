@@ -1,0 +1,95 @@
+{
+    "version": 1,
+    "exportedAt": "2026-01-15T00:00:00.000Z",
+    "recipes": [
+        {
+            "id": "sample-moussaka",
+            "title": "Μουσακάς",
+            "translatedTitle": "Moussaka",
+            "servings": 6,
+            "originalLanguage": "el",
+            "translatedLanguage": "en",
+            "source": "Traditional Greek Recipe",
+            "ingredients": [
+                { "quantity": 500, "unit": "g", "item": "κιμάς μοσχαρίσιος", "translatedItem": "ground beef", "notes": "" },
+                { "quantity": 2, "unit": null, "item": "μελιτζάνες μεγάλες", "translatedItem": "large eggplants", "notes": "τεμαχισμένες σε ροδέλες" },
+                { "quantity": 3, "unit": null, "item": "πατάτες μέτριες", "translatedItem": "medium potatoes", "notes": "σε φέτες" },
+                { "quantity": 1, "unit": null, "item": "κρεμμύδι μεγάλο", "translatedItem": "large onion", "notes": "ψιλοκομμένο" },
+                { "quantity": 2, "unit": null, "item": "σκελίδες σκόρδο", "translatedItem": "cloves garlic", "notes": "λιωμένες" },
+                { "quantity": 400, "unit": "g", "item": "ντοματάκια κονκασέ", "translatedItem": "crushed tomatoes", "notes": "" },
+                { "quantity": 120, "unit": "ml", "item": "λευκό κρασί", "translatedItem": "white wine", "notes": "" },
+                { "quantity": 1, "unit": "tsp", "item": "κανέλα", "translatedItem": "cinnamon", "notes": "" },
+                { "quantity": 0.5, "unit": "tsp", "item": "μοσχοκάρυδο", "translatedItem": "nutmeg", "notes": "" },
+                { "quantity": 60, "unit": "g", "item": "βούτυρο", "translatedItem": "butter", "notes": "για την μπεσαμέλ" },
+                { "quantity": 60, "unit": "g", "item": "αλεύρι", "translatedItem": "flour", "notes": "" },
+                { "quantity": 500, "unit": "ml", "item": "γάλα", "translatedItem": "milk", "notes": "" },
+                { "quantity": 2, "unit": null, "item": "κρόκοι αυγών", "translatedItem": "egg yolks", "notes": "" },
+                { "quantity": 100, "unit": "g", "item": "κεφαλοτύρι τριμμένο", "translatedItem": "grated kefalotyri cheese", "notes": "" }
+            ],
+            "instructions": [
+                "Πλύνετε τις μελιτζάνες, κόψτε τις σε ροδέλες και αλατίστε τις. Αφήστε τις 30 λεπτά να βγάλουν τα υγρά τους.",
+                "Τηγανίστε τις μελιτζάνες και τις πατάτες σε ελαιόλαδο μέχρι να ροδίσουν. Στραγγίστε σε χαρτί κουζίνας.",
+                "Σοτάρετε το κρεμμύδι μέχρι να γίνει διάφανο. Προσθέστε το σκόρδο και τον κιμά. Σιγοβράστε μέχρι να ροδίσει.",
+                "Προσθέστε το κρασί, τις ντομάτες, την κανέλα, το μοσχοκάρυδο, αλάτι και πιπέρι. Σιγοβράστε 20 λεπτά.",
+                "Για την μπεσαμέλ: Λιώστε το βούτυρο, προσθέστε το αλεύρι και ανακατέψτε. Σιγά-σιγά προσθέστε το γάλα ανακατεύοντας.",
+                "Μόλις δέσει, αφήστε να κρυώσει λίγο και προσθέστε τους κρόκους και το τυρί.",
+                "Σε ταψί στρώστε τις πατάτες, μετά τις μελιτζάνες, μετά τον κιμά και τέλος τη μπεσαμέλ.",
+                "Ψήστε στους 180°C για 45-50 λεπτά μέχρι να ροδίσει η επιφάνεια."
+            ],
+            "translatedInstructions": [
+                "Wash the eggplants, slice them into rounds and salt them. Let them sit for 30 minutes to release moisture.",
+                "Fry the eggplants and potatoes in olive oil until golden. Drain on paper towels.",
+                "Sauté the onion until translucent. Add the garlic and ground beef. Simmer until browned.",
+                "Add the wine, tomatoes, cinnamon, nutmeg, salt and pepper. Simmer for 20 minutes.",
+                "For the béchamel: Melt the butter, add the flour and stir. Slowly add the milk while stirring.",
+                "Once thickened, let it cool slightly and add the egg yolks and cheese.",
+                "In a baking dish, layer the potatoes, then eggplants, then the meat sauce, and finally the béchamel.",
+                "Bake at 180°C (350°F) for 45-50 minutes until the top is golden."
+            ],
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "updatedAt": "2026-01-01T00:00:00.000Z"
+        },
+        {
+            "id": "sample-pancakes",
+            "title": "Classic Fluffy Pancakes",
+            "translatedTitle": "Κλασικές Αφράτες Τηγανίτες",
+            "servings": 4,
+            "originalLanguage": "en",
+            "translatedLanguage": "el",
+            "source": "American Breakfast Classic",
+            "ingredients": [
+                { "quantity": 2, "unit": "cup", "item": "all-purpose flour", "translatedItem": "αλεύρι για όλες τις χρήσεις", "notes": "" },
+                { "quantity": 2, "unit": "tbsp", "item": "sugar", "translatedItem": "ζάχαρη", "notes": "" },
+                { "quantity": 2, "unit": "tsp", "item": "baking powder", "translatedItem": "μπέικιν πάουντερ", "notes": "" },
+                { "quantity": 1, "unit": "tsp", "item": "baking soda", "translatedItem": "μαγειρική σόδα", "notes": "" },
+                { "quantity": 0.5, "unit": "tsp", "item": "salt", "translatedItem": "αλάτι", "notes": "" },
+                { "quantity": 2, "unit": null, "item": "large eggs", "translatedItem": "μεγάλα αυγά", "notes": "" },
+                { "quantity": 2, "unit": "cup", "item": "buttermilk", "translatedItem": "αριανί", "notes": "" },
+                { "quantity": 60, "unit": "g", "item": "melted butter", "translatedItem": "λιωμένο βούτυρο", "notes": "plus more for cooking" },
+                { "quantity": 1, "unit": "tsp", "item": "vanilla extract", "translatedItem": "εκχύλισμα βανίλιας", "notes": "" }
+            ],
+            "instructions": [
+                "In a large bowl, whisk together the flour, sugar, baking powder, baking soda, and salt.",
+                "In another bowl, beat the eggs. Add the buttermilk, melted butter, and vanilla. Mix well.",
+                "Pour the wet ingredients into the dry ingredients. Stir just until combined - lumps are okay!",
+                "Let the batter rest for 5 minutes while you heat a griddle or non-stick pan over medium heat.",
+                "Lightly butter the pan. Pour about 1/4 cup of batter per pancake.",
+                "Cook until bubbles form on the surface and edges look set, about 2-3 minutes.",
+                "Flip and cook for another 1-2 minutes until golden brown on the bottom.",
+                "Serve immediately with maple syrup, fresh berries, and a pat of butter."
+            ],
+            "translatedInstructions": [
+                "Σε ένα μεγάλο μπολ, ανακατέψτε το αλεύρι, τη ζάχαρη, το μπέικιν πάουντερ, τη σόδα και το αλάτι.",
+                "Σε άλλο μπολ, χτυπήστε τα αυγά. Προσθέστε το αριανί, το λιωμένο βούτυρο και τη βανίλια. Ανακατέψτε καλά.",
+                "Ρίξτε τα υγρά υλικά στα στεγνά. Ανακατέψτε μόνο μέχρι να ενωθούν - οι σβώλοι είναι εντάξει!",
+                "Αφήστε το μείγμα να ξεκουραστεί 5 λεπτά ενώ ζεσταίνετε ένα τηγάνι σε μέτρια φωτιά.",
+                "Βουτυρώστε ελαφρά το τηγάνι. Ρίξτε περίπου 60ml μείγμα ανά τηγανίτα.",
+                "Μαγειρέψτε μέχρι να σχηματιστούν φυσαλίδες στην επιφάνεια και οι άκρες να φαίνονται σταθερές, περίπου 2-3 λεπτά.",
+                "Γυρίστε και μαγειρέψτε για άλλα 1-2 λεπτά μέχρι να ροδίσει η κάτω πλευρά.",
+                "Σερβίρετε αμέσως με σιρόπι σφενδάμου, φρέσκα μούρα και λίγο βούτυρο."
+            ],
+            "createdAt": "2026-01-02T00:00:00.000Z",
+            "updatedAt": "2026-01-02T00:00:00.000Z"
+        }
+    ]
+}
