@@ -62,11 +62,9 @@ function logout() {
 }
 
 // Protect page (redirect if not authenticated)
+// NOTE: Authentication is now handled by Cloudflare Worker
+// This function now always returns true
 function requireAuth() {
-    if (!isAuthenticated()) {
-        window.location.href = 'index.html';
-        return false;
-    }
     return true;
 }
 
