@@ -16,6 +16,9 @@ async function initApp() {
     // Check authentication
     if (!requireAuth()) return;
 
+    // Initialize theme
+    initTheme();
+
     // Initialize storage
     await initDB();
     await loadSampleRecipes();
@@ -31,9 +34,25 @@ async function initApp() {
     setupNavigation();
     setupSidebar();
     setupEventListeners();
+    setupThemeToggle();
 
     // Initial route
     handleRoute();
+}
+
+// Theme functions
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+}
+
+function setupThemeToggle() {
+    document.getElementById('theme-toggle-btn')?.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme') || 'light';
+        const newTheme = current === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+    });
 }
 
 // Navigation setup
@@ -126,6 +145,11 @@ async function showRecipesView() {
             <div class="view-header">
                 <h1>My Recipes</h1>
                 <div class="view-actions">
+                    <button class="btn btn-primary" id="new-recipe-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 5v14M5 12h14"/>
+                        </svg><span>New Recipe</span>
+                    </button>
                     <button class="btn btn-secondary" id="import-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -160,6 +184,11 @@ async function showRecipesView() {
         document.getElementById('file-import-input')?.click();
     });
     document.getElementById('export-btn')?.addEventListener('click', handleExport);
+
+    // New Recipe button
+    document.getElementById('new-recipe-btn')?.addEventListener('click', () => {
+        showParseView(null, true); // true = manual entry mode
+    });
 
     document.querySelectorAll('.recipe-card').forEach(card => {
         card.addEventListener('click', () => {
@@ -219,6 +248,12 @@ function renderRecipeDetail(recipe, desiredServings = null) {
                     </svg><span>Back</span>
                 </button>
                 <div class="view-actions">
+                    <button class="btn btn-secondary" id="share-recipe-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                        </svg><span>Share</span>
+                    </button>
                     <button class="btn btn-secondary" id="edit-recipe-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -241,40 +276,41 @@ function renderRecipeDetail(recipe, desiredServings = null) {
                     <div class="recipe-detail-meta">
                         <span>🍽️ ${recipe.servings} servings</span>
                         <span>🌍 ${getLanguageName(recipe.originalLanguage)}</span>
-                        ${recipe.source ? `<span>📖 ${escapeHtml(recipe.source)}</span>` : ''}
+                        ${recipe.source ? `<a href="${escapeHtml(recipe.source)}" target="_blank" class="source-link">📖 Source</a>` : ''}
                     </div>
                 </header>
                 
                 <div class="recipe-detail-body">
                     <div class="recipe-controls">
                         <div class="control-group">
-                            <label for="unit-toggle">Units</label>
-                            <select id="unit-toggle">
-                                <option value="metric" ${appState.unitSystem === 'metric' ? 'selected' : ''}>Metric</option>
-                                <option value="us" ${appState.unitSystem === 'us' ? 'selected' : ''}>US Customary</option>
-                                <option value="cooking" ${appState.unitSystem === 'cooking' ? 'selected' : ''}>Cooking</option>
-                            </select>
-                        </div>
-                        <div class="control-group">
                             <label for="servings-input">Servings</label>
-                            <input type="number" id="servings-input" min="1" max="100" value="${servings}">
+                            <div class="servings-control">
+                                <button class="btn btn-ghost btn-sm" id="servings-minus">−</button>
+                                <input type="number" id="servings-input" min="1" max="100" value="${servings}">
+                                <button class="btn btn-ghost btn-sm" id="servings-plus">+</button>
+                            </div>
+                            ${servings !== recipe.servings ? `<span class="servings-note">(original: ${recipe.servings})</span>` : ''}
                         </div>
                     </div>
                     
                     <section class="recipe-section">
                         <h2>Ingredients</h2>
-                        <table class="ingredients-table">
-                            <thead>
-                                <tr>
-                                    <th>Quantity</th>
-                                    <th>Ingredient</th>
-                                    <th>Converted</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${recipe.ingredients.map(ing => renderIngredientRow(ing, scale)).join('')}
-                            </tbody>
-                        </table>
+                        <div class="ingredients-table-container">
+                            <table class="ingredients-table">
+                                <thead>
+                                    <tr>
+                                        <th>Qty</th>
+                                        <th>Ingredient</th>
+                                        <th class="unit-col">Metric</th>
+                                        <th class="unit-col">US</th>
+                                        <th class="unit-col">Cooking</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${recipe.ingredients.map(ing => renderIngredientRow(ing, scale)).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </section>
                     
                     <section class="recipe-section">
@@ -293,48 +329,73 @@ function renderRecipeDetail(recipe, desiredServings = null) {
                             `).join('')}
                         </div>
                     </section>
+                    
+                    ${recipe.notes ? `
+                    <section class="recipe-section">
+                        <h2>Notes</h2>
+                        <div class="recipe-notes">${escapeHtml(recipe.notes)}</div>
+                    </section>
+                    ` : ''}
                 </div>
             </article>
         </div>
     `;
 }
 
-// Render ingredient row
+// Render ingredient row with 3 unit columns
 function renderIngredientRow(ingredient, scale = 1) {
     const scaledQty = ingredient.quantity ? scaleQuantity(ingredient.quantity, 1, scale) : null;
-    const converted = convertIngredient({ ...ingredient, quantity: scaledQty }, appState.unitSystem);
 
-    const original = formatQuantityUnit(scaledQty, ingredient.unit);
-    const convertedDisplay = converted.converted ? formatQuantityUnit(converted.quantity, converted.unit) : '—';
+    // Get conversions for all three unit systems
+    const metricConv = convertIngredient({ ...ingredient, quantity: scaledQty }, 'metric');
+    const usConv = convertIngredient({ ...ingredient, quantity: scaledQty }, 'us');
+    const cookingConv = convertIngredient({ ...ingredient, quantity: scaledQty }, 'cooking');
+
+    const originalQty = formatQuantityUnit(scaledQty, ingredient.unit);
+    const metricDisplay = metricConv.converted ? formatQuantityUnit(metricConv.quantity, metricConv.unit) : originalQty || '—';
+    const usDisplay = usConv.converted ? formatQuantityUnit(usConv.quantity, usConv.unit) : originalQty || '—';
+    const cookingDisplay = cookingConv.converted ? formatQuantityUnit(cookingConv.quantity, cookingConv.unit) : originalQty || '—';
 
     return `
         <tr>
-            <td>${original || '—'}</td>
-            <td>
-                <span class="ingredient-original">${escapeHtml(ingredient.item)}</span>
-                ${ingredient.translatedItem ? `<br><span class="ingredient-translation">${escapeHtml(ingredient.translatedItem)}</span>` : ''}
-                ${ingredient.notes ? `<br><small>(${escapeHtml(ingredient.notes)})</small>` : ''}
+            <td class="qty-col">${originalQty || '—'}</td>
+            <td class="ingredient-col">
+                <span class="ingredient-name">${escapeHtml(ingredient.item)}</span>
+                ${ingredient.translatedItem ? `<span class="ingredient-translation">${escapeHtml(ingredient.translatedItem)}</span>` : ''}
             </td>
-            <td><span class="ingredient-converted">${convertedDisplay}</span></td>
+            <td class="unit-col metric-col">${metricDisplay}</td>
+            <td class="unit-col us-col">${usDisplay}</td>
+            <td class="unit-col cooking-col">${cookingDisplay}</td>
         </tr>
     `;
 }
 
 // Setup recipe detail listeners
 function setupRecipeDetailListeners() {
-    document.getElementById('unit-toggle')?.addEventListener('change', (e) => {
-        appState.unitSystem = e.target.value;
-        const settings = getSettings();
-        settings.unitSystem = appState.unitSystem;
-        saveSettings(settings);
-        showRecipeDetail(appState.currentRecipe.id);
-    });
-
-    document.getElementById('servings-input')?.addEventListener('change', (e) => {
-        appState.desiredServings = parseInt(e.target.value) || appState.currentRecipe.servings;
+    // Servings input and +/- buttons
+    const updateServings = (newServings) => {
+        newServings = Math.max(1, Math.min(100, newServings));
+        appState.desiredServings = newServings;
         const main = document.getElementById('main-content');
         main.innerHTML = renderRecipeDetail(appState.currentRecipe, appState.desiredServings);
         setupRecipeDetailListeners();
+    };
+
+    document.getElementById('servings-input')?.addEventListener('change', (e) => {
+        updateServings(parseInt(e.target.value) || appState.currentRecipe.servings);
+    });
+
+    document.getElementById('servings-minus')?.addEventListener('click', () => {
+        updateServings((appState.desiredServings || appState.currentRecipe.servings) - 1);
+    });
+
+    document.getElementById('servings-plus')?.addEventListener('click', () => {
+        updateServings((appState.desiredServings || appState.currentRecipe.servings) + 1);
+    });
+
+    // Share button
+    document.getElementById('share-recipe-btn')?.addEventListener('click', () => {
+        showShareModal(appState.currentRecipe);
     });
 
     document.getElementById('edit-recipe-btn')?.addEventListener('click', () => {
@@ -355,18 +416,95 @@ function setupRecipeDetailListeners() {
     });
 }
 
+// Show share modal
+function showShareModal(recipe) {
+    const modalContent = `
+        <div class="share-options">
+            <div class="form-group">
+                <label>Language</label>
+                <select id="share-language">
+                    <option value="original">${getLanguageName(recipe.originalLanguage)} (Original)</option>
+                    <option value="translated">${getLanguageName(recipe.originalLanguage === 'el' ? 'en' : 'el')} (Translated)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Unit System</label>
+                <select id="share-unit">
+                    <option value="metric">Metric</option>
+                    <option value="us">US Customary</option>
+                    <option value="cooking">Cooking</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Servings</label>
+                <input type="number" id="share-servings" value="${appState.desiredServings || recipe.servings}" min="1" max="100">
+            </div>
+        </div>
+    `;
+
+    showModal('Share Recipe', modalContent, [
+        { text: 'Cancel', class: 'btn-secondary' },
+        {
+            text: 'Copy to Clipboard', class: 'btn-primary', onClick: () => {
+                const lang = document.getElementById('share-language').value;
+                const unit = document.getElementById('share-unit').value;
+                const servings = parseInt(document.getElementById('share-servings').value) || recipe.servings;
+                const text = formatRecipeForSharing(recipe, lang, unit, servings);
+                navigator.clipboard.writeText(text);
+                showToast('Recipe copied to clipboard!', 'success');
+            }
+        }
+    ]);
+}
+
+// Format recipe for sharing
+function formatRecipeForSharing(recipe, lang, unit, servings) {
+    const scale = servings / recipe.servings;
+    const useTranslated = lang === 'translated';
+
+    let text = `${useTranslated && recipe.translatedTitle ? recipe.translatedTitle : recipe.title}\n`;
+    text += `${'─'.repeat(40)}\n`;
+    text += `Servings: ${servings}\n\n`;
+
+    text += `INGREDIENTS\n`;
+    recipe.ingredients.forEach(ing => {
+        const scaledQty = ing.quantity ? scaleQuantity(ing.quantity, 1, scale) : null;
+        const conv = convertIngredient({ ...ing, quantity: scaledQty }, unit);
+        const qty = conv.converted ? formatQuantityUnit(conv.quantity, conv.unit) : formatQuantityUnit(scaledQty, ing.unit);
+        const name = useTranslated && ing.translatedItem ? ing.translatedItem : ing.item;
+        text += `• ${qty ? qty + ' ' : ''}${name}\n`;
+    });
+
+    text += `\nINSTRUCTIONS\n`;
+    const instructions = useTranslated && recipe.translatedInstructions ? recipe.translatedInstructions : recipe.instructions;
+    instructions.forEach((step, i) => {
+        text += `${i + 1}. ${step}\n`;
+    });
+
+    if (recipe.notes) {
+        text += `\nNOTES\n${recipe.notes}\n`;
+    }
+
+    if (recipe.source) {
+        text += `\nSource: ${recipe.source}`;
+    }
+
+    return text;
+}
+
 // Show parse view
-function showParseView(editRecipe = null) {
+function showParseView(editRecipe = null, manualEntry = false) {
     const main = document.getElementById('main-content');
+    const showForm = editRecipe || manualEntry;
 
     main.innerHTML = `
         <div class="view" id="view-parse">
             <div class="view-header">
-                <h1>${editRecipe ? 'Edit Recipe' : 'Parse New Recipe'}</h1>
+                <h1>${editRecipe ? 'Edit Recipe' : (manualEntry ? 'New Recipe' : 'Parse Recipe')}</h1>
             </div>
             
             <div class="parse-container">
-                <div class="parse-input-section" ${editRecipe ? 'style="display:none"' : ''}>
+                <div class="parse-input-section" ${showForm ? 'style="display:none"' : ''}>
                     <!-- Input Mode Tabs -->
                     <div class="parse-tabs">
                         <button class="parse-tab active" data-mode="text">📝 Paste Text</button>
@@ -411,8 +549,8 @@ function showParseView(editRecipe = null) {
                     </button>
                 </div>
                 
-                <div class="parse-preview-section" id="parse-preview" ${editRecipe ? '' : 'style="display:none"'}>
-                    <h2>Preview & Edit</h2>
+                <div class="parse-preview-section" id="parse-preview" ${showForm ? '' : 'style="display:none"'}>
+                    <h2>${editRecipe ? 'Edit Recipe' : 'Recipe Details'}</h2>
                     <form id="recipe-form" class="recipe-form">
                         <input type="hidden" id="recipe-id" value="${editRecipe?.id || ''}">
                         <div class="form-row">
@@ -446,6 +584,10 @@ function showParseView(editRecipe = null) {
                             <div class="steps-list" id="steps-list">
                                 ${editRecipe ? editRecipe.instructions.map((step, i) => renderStepInput(step, i)).join('') : ''}
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="recipe-notes">Notes (optional)</label>
+                            <textarea id="recipe-notes" class="recipe-notes-input" placeholder="Add any notes, tips, or variations..." rows="4">${editRecipe?.notes || ''}</textarea>
                         </div>
                         <div class="form-actions">
                             <button type="button" class="btn btn-secondary" id="cancel-parse-btn">Cancel</button>
@@ -650,6 +792,7 @@ async function handleSaveRecipe(e) {
     const title = document.getElementById('recipe-title').value.trim();
     const servings = parseInt(document.getElementById('recipe-servings').value) || 4;
     const source = document.getElementById('recipe-source').value.trim();
+    const notes = document.getElementById('recipe-notes')?.value.trim() || '';
 
     // Collect ingredients
     const ingredients = [];
@@ -680,6 +823,7 @@ async function handleSaveRecipe(e) {
         title,
         servings,
         source,
+        notes,
         ingredients,
         instructions,
         originalLanguage: appState.parsedRecipe?.originalLanguage || detectLanguage(title),

@@ -147,7 +147,7 @@ async function handleFetchUrl(request, env) {
     }
 }
 
-// Parse recipe using Gemini API
+// Parse recipe using Gemini API with multi-model fallback
 async function handleParseRecipe(request, env) {
     try {
         const { content, type } = await request.json(); // type: 'html' or 'text'
@@ -163,48 +163,82 @@ async function handleParseRecipe(request, env) {
             ? buildHtmlParsePrompt(content)
             : buildTextParsePrompt(content);
 
-        const geminiResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${env.GEMINI_API_KEY}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        temperature: 0.3,
-                        maxOutputTokens: 4096
+        // Try multiple models in order of preference (based on user's available models)
+        const models = [
+            'gemini-2.0-flash',
+            'gemini-2.0-flash-lite',
+            'gemini-2.5-flash',
+            'gemini-flash-latest'
+        ];
+
+        let lastError = null;
+
+        for (const model of models) {
+            try {
+                const geminiResponse = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: {
+                                temperature: 0.3,
+                                maxOutputTokens: 4096
+                            }
+                        })
                     }
-                })
+                );
+
+                const data = await geminiResponse.json();
+
+                // If quota error, try next model
+                if (data.error && data.error.message.includes('quota')) {
+                    lastError = `${model}: ${data.error.message}`;
+                    continue;
+                }
+
+                // If model not found, try next model
+                if (data.error && data.error.message.includes('not found')) {
+                    lastError = `${model}: ${data.error.message}`;
+                    continue;
+                }
+
+                // Any other error
+                if (data.error) {
+                    return new Response(JSON.stringify({ error: data.error.message }), {
+                        status: 500,
+                        headers: corsHeaders()
+                    });
+                }
+
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!text) {
+                    lastError = `${model}: No response`;
+                    continue;
+                }
+
+                // Extract JSON from response
+                let jsonStr = text;
+                const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+                if (jsonMatch) {
+                    jsonStr = jsonMatch[1];
+                }
+
+                const recipe = JSON.parse(jsonStr.trim());
+
+                return new Response(JSON.stringify({ recipe, model }), {
+                    headers: corsHeaders()
+                });
+            } catch (modelError) {
+                lastError = `${model}: ${modelError.message}`;
+                continue;
             }
-        );
-
-        const data = await geminiResponse.json();
-
-        if (data.error) {
-            return new Response(JSON.stringify({ error: data.error.message }), {
-                status: 500,
-                headers: corsHeaders()
-            });
         }
 
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) {
-            return new Response(JSON.stringify({ error: 'No response from Gemini' }), {
-                status: 500,
-                headers: corsHeaders()
-            });
-        }
-
-        // Extract JSON from response
-        let jsonStr = text;
-        const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-        if (jsonMatch) {
-            jsonStr = jsonMatch[1];
-        }
-
-        const recipe = JSON.parse(jsonStr.trim());
-
-        return new Response(JSON.stringify({ recipe }), {
+        // All models failed
+        return new Response(JSON.stringify({ error: `All models failed. Last error: ${lastError}` }), {
+            status: 500,
             headers: corsHeaders()
         });
     } catch (error) {
