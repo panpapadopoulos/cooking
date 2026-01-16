@@ -228,11 +228,23 @@ async function handleParseRecipe(request, env) {
                     continue;
                 }
 
-                // Extract JSON from response
-                let jsonStr = text;
-                const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-                if (jsonMatch) {
-                    jsonStr = jsonMatch[1];
+                // Extract JSON from response - handle various markdown formats
+                let jsonStr = text.trim();
+
+                // Remove markdown code fences if present
+                if (jsonStr.startsWith('```')) {
+                    // Remove opening fence (```json or ``` or ```JSON)
+                    jsonStr = jsonStr.replace(/^```(?:json|JSON)?\s*\n?/, '');
+                    // Remove closing fence
+                    jsonStr = jsonStr.replace(/\n?```\s*$/, '');
+                }
+
+                // Also try regex match as fallback
+                if (jsonStr.startsWith('```') || !jsonStr.startsWith('{')) {
+                    const jsonMatch = text.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        jsonStr = jsonMatch[0];
+                    }
                 }
 
                 const recipe = JSON.parse(jsonStr.trim());
