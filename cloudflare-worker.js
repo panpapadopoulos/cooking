@@ -193,8 +193,8 @@ async function handleParseRecipe(request, env) {
                         body: JSON.stringify({
                             contents: [{ parts: [{ text: prompt }] }],
                             generationConfig: {
-                                temperature: 0.3,
-                                maxOutputTokens: 4096
+                                temperature: 0.2,
+                                maxOutputTokens: 8192
                             }
                         })
                     }
@@ -220,6 +220,13 @@ async function handleParseRecipe(request, env) {
                         status: 500,
                         headers: corsHeaders()
                     });
+                }
+
+                // Check if response was truncated
+                const finishReason = data.candidates?.[0]?.finishReason;
+                if (finishReason === 'MAX_TOKENS') {
+                    lastError = `${model}: Response truncated (too long)`;
+                    continue;
                 }
 
                 const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
