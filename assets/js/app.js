@@ -367,12 +367,31 @@ function showParseView(editRecipe = null) {
             
             <div class="parse-container">
                 <div class="parse-input-section" ${editRecipe ? 'style="display:none"' : ''}>
-                    <div class="form-group">
-                        <label for="recipe-text">Paste your recipe here</label>
-                        <textarea id="recipe-text" class="recipe-textarea" placeholder="Paste a recipe..." rows="12"></textarea>
+                    <!-- Input Mode Tabs -->
+                    <div class="parse-tabs">
+                        <button class="parse-tab active" data-mode="text">📝 Paste Text</button>
+                        <button class="parse-tab" data-mode="url">🔗 From URL</button>
                     </div>
-                    <div class="parse-options">
+                    
+                    <!-- Text Input Mode -->
+                    <div class="parse-mode" id="mode-text">
                         <div class="form-group">
+                            <label for="recipe-text">Paste your recipe here</label>
+                            <textarea id="recipe-text" class="recipe-textarea" placeholder="Paste a recipe in Greek or English..." rows="12"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- URL Input Mode -->
+                    <div class="parse-mode" id="mode-url" style="display:none;">
+                        <div class="form-group">
+                            <label for="recipe-url">Enter recipe URL</label>
+                            <input type="url" id="recipe-url" class="recipe-url-input" placeholder="https://example.com/recipe...">
+                        </div>
+                        <p class="url-hint">Paste a link to any recipe page and we'll extract the recipe automatically using AI.</p>
+                    </div>
+                    
+                    <div class="parse-options">
+                        <div class="form-group" id="lang-select-group">
                             <label for="source-lang">Source Language</label>
                             <select id="source-lang">
                                 <option value="auto">Auto-detect</option>
@@ -381,11 +400,10 @@ function showParseView(editRecipe = null) {
                             </select>
                         </div>
                         <div class="parse-mode-indicator" id="parse-mode-indicator">
-                            <span class="mode-badge ${isGeminiConfigured() ? 'gemini' : 'heuristic'}">
-                                Using: ${isGeminiConfigured() ? 'AI Parser' : 'Heuristic Parser'}
-                            </span>
+                            <span class="mode-badge gemini">Using: AI Parser</span>
                         </div>
                     </div>
+                    
                     <button class="btn btn-primary btn-block" id="parse-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
@@ -478,6 +496,21 @@ function renderStepInput(step = '', index = 0) {
 
 // Setup parse view listeners
 function setupParseListeners() {
+    // Tab switching
+    document.querySelectorAll('.parse-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.parse-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            const mode = tab.dataset.mode;
+            document.getElementById('mode-text').style.display = mode === 'text' ? 'block' : 'none';
+            document.getElementById('mode-url').style.display = mode === 'url' ? 'block' : 'none';
+
+            // Hide language selector for URL mode (auto-detect)
+            document.getElementById('lang-select-group').style.display = mode === 'text' ? 'block' : 'none';
+        });
+    });
+
     document.getElementById('parse-btn')?.addEventListener('click', handleParse);
 
     document.getElementById('add-ingredient-btn')?.addEventListener('click', () => {
@@ -499,37 +532,104 @@ function setupParseListeners() {
     document.getElementById('recipe-form')?.addEventListener('submit', handleSaveRecipe);
 }
 
-// Handle parse
+// Handle parse (text or URL)
 async function handleParse() {
-    const text = document.getElementById('recipe-text').value.trim();
-    if (!text) {
-        showToast('Please paste a recipe first', 'warning');
-        return;
-    }
+    const activeTab = document.querySelector('.parse-tab.active');
+    const isUrlMode = activeTab?.dataset.mode === 'url';
 
     const btn = document.getElementById('parse-btn');
     btn.disabled = true;
     btn.innerHTML = '<span>Parsing...</span>';
 
     try {
-        const sourceLang = document.getElementById('source-lang').value;
-        const parsed = await smartParseRecipe(text, sourceLang);
+        let parsed;
+
+        if (isUrlMode) {
+            // URL mode - fetch and parse with Worker
+            const url = document.getElementById('recipe-url').value.trim();
+            if (!url) {
+                showToast('Please enter a URL', 'warning');
+                btn.disabled = false;
+                btn.innerHTML = '<span>Parse Recipe</span>';
+                return;
+            }
+
+            showToast('Fetching recipe from URL...', 'info');
+
+            // Fetch URL content via Worker proxy
+            const fetchResponse = await fetch('/api/fetch-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+
+            if (!fetchResponse.ok) {
+                const error = await fetchResponse.json();
+                throw new Error(error.error || 'Failed to fetch URL');
+            }
+
+            const { html } = await fetchResponse.json();
+
+            showToast('Parsing recipe with AI...', 'info');
+
+            // Parse with Gemini via Worker
+            const parseResponse = await fetch('/api/parse-recipe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: html, type: 'html' })
+            });
+
+            if (!parseResponse.ok) {
+                const error = await parseResponse.json();
+                throw new Error(error.error || 'Failed to parse recipe');
+            }
+
+            const result = await parseResponse.json();
+            parsed = result.recipe;
+            parsed.source = url;
+
+        } else {
+            // Text mode - parse with Worker's Gemini API
+            const text = document.getElementById('recipe-text').value.trim();
+            if (!text) {
+                showToast('Please paste a recipe first', 'warning');
+                btn.disabled = false;
+                btn.innerHTML = '<span>Parse Recipe</span>';
+                return;
+            }
+
+            showToast('Parsing recipe with AI...', 'info');
+
+            const parseResponse = await fetch('/api/parse-recipe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: text, type: 'text' })
+            });
+
+            if (!parseResponse.ok) {
+                const error = await parseResponse.json();
+                throw new Error(error.error || 'Failed to parse recipe');
+            }
+
+            const result = await parseResponse.json();
+            parsed = result.recipe;
+            parsed.originalText = text;
+        }
 
         // Show preview
         document.querySelector('.parse-input-section').style.display = 'none';
         document.getElementById('parse-preview').style.display = 'block';
 
         // Fill form
-        document.getElementById('recipe-title').value = parsed.title;
-        document.getElementById('recipe-servings').value = parsed.servings;
+        document.getElementById('recipe-title').value = parsed.title || '';
+        document.getElementById('recipe-servings').value = parsed.servings || 4;
+        document.getElementById('recipe-source').value = parsed.source || '';
 
         const ingredientsList = document.getElementById('ingredients-list');
-        ingredientsList.innerHTML = parsed.ingredients.map((ing, i) => renderIngredientInput(ing, i)).join('');
+        ingredientsList.innerHTML = (parsed.ingredients || []).map((ing, i) => renderIngredientInput(ing, i)).join('');
 
         const stepsList = document.getElementById('steps-list');
-        stepsList.innerHTML = parsed.instructions.map((step, i) => renderStepInput(step, i)).join('');
-
-        // Store parsed data for saving
+        stepsList.innerHTML = (parsed.instructions || []).map((step, i) => renderStepInput(step, i)).join('');
         appState.parsedRecipe = parsed;
 
         showToast('Recipe parsed successfully!', 'success');
