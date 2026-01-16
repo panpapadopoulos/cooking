@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,77 +11,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body class="login-page">
-    <div class="login-container">
-        <div class="login-card">
-            <div class="login-header">
-                <div class="logo">
-                    <span class="logo-icon">🍳</span>
-                </div>
-                <h1>Panagioti's Cooking</h1>
-                <p class="tagline">Personal Recipe Repository</p>
-            </div>
-            
-            <form id="login-form" class="login-form">
-                <div class="form-group">
-                    <label for="password" class="sr-only">Password</label>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        name="password" 
-                        placeholder="Enter password"
-                        autocomplete="current-password"
-                        required
-                    >
-                </div>
-                <div id="error-message" class="error-message" role="alert" aria-live="polite"></div>
-                <button type="submit" class="btn btn-primary btn-block">
-                    <span>Enter Kitchen</span>
-                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
-                </button>
-            </form>
-            
-            <div class="login-footer">
-                <p class="disclaimer">
-                    <small>🔒 Client-side authentication only</small>
-                </p>
-            </div>
-        </div>
-        
-        <div class="decorative-elements">
-            <span class="deco deco-1">🥘</span>
-            <span class="deco deco-2">🍝</span>
-            <span class="deco deco-3">🥗</span>
-            <span class="deco deco-4">🍰</span>
-        </div>
-    </div>
 
-    <!--
-    ==========================================
-    SECURITY DISCLAIMER
-    ==========================================
-    This login system uses CLIENT-SIDE password verification only.
-    
-    GitHub Pages is a static hosting service and cannot provide
-    true secure authentication without a backend server.
-    
-    The password is stored in this JavaScript file and can be
-    viewed by anyone who inspects the source code.
-    
-    This implementation is suitable for:
-    - Personal use where convenience > security
-    - Keeping casual visitors out
-    - Demo/prototype purposes
-    
-    For actual security, consider:
-    - Using a backend server with proper auth
-    - Cloudflare Workers or similar edge functions
-    - GitHub private repos with GitHub Actions
-    ==========================================
-    -->
-    
-    <script src="assets/js/auth.js"></script>
+<body>
+    <!-- Authentication is handled by Cloudflare Worker -->
+    <!-- This page just redirects to the app -->
+    <script>
+        window.location.replace('app.html');
+    </script>
+    <noscript>
+        <meta http-equiv="refresh" content="0;url=app.html">
+        <p>Redirecting to <a href="app.html">app</a>...</p>
+    </noscript>
 </body>
+
 </html>
